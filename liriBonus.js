@@ -1,16 +1,17 @@
 // DEPENDENCIES
 // =====================================
+
 // Read and set environment variables
 require("dotenv").config();
+
+// Import the API keys
+var keys = require("./keys");
 
 // Import the Twitter NPM package.
 var Twitter = require("twitter");
 
 // Import the node-spotify-api NPM package.
 var Spotify = require("node-spotify-api");
-
-// Import the API keys
-var keys = require("./keys");
 
 // Import the request npm package.
 var request = require("request");
@@ -25,6 +26,18 @@ var spotify = new Spotify(keys.spotify);
 // =====================================
 
 // Writes to the log.txt file
+var writeToLog = function(data) {
+  // Append the JSON data and add a newline character to the end of the log.txt file
+  fs.appendFile("log.txt", JSON.stringify(data) + "\n", function(err) {
+    if (err) {
+      return console.log(err);
+    }
+
+    console.log("log.txt was updated!");
+  });
+};
+
+// Helper function that gets the artist name
 var getArtistNames = function(artist) {
   return artist.name;
 };
@@ -35,45 +48,47 @@ var getMeSpotify = function(songName) {
     songName = "What's my age again";
   }
 
-  spotify.search(
-    {
-      type: "track",
-      query: songName
-    },
-    function(err, data) {
-      if (err) {
-        console.log("Error occurred: " + err);
-        return;
-      }
-
-      var songs = data.tracks.items;
-
-      for (var i = 0; i < songs.length; i++) {
-        console.log(i);
-        console.log("artist(s): " + songs[i].artists.map(getArtistNames));
-        console.log("song name: " + songs[i].name);
-        console.log("preview song: " + songs[i].preview_url);
-        console.log("album: " + songs[i].album.name);
-        console.log("-----------------------------------");
-      }
+  spotify.search({ type: "track", query: songName }, function(err, data) {
+    if (err) {
+      console.log("Error occurred: " + err);
+      return;
     }
-  );
+
+    var songs = data.tracks.items;
+    var data = [];
+
+    for (var i = 0; i < songs.length; i++) {
+      data.push({
+        "artist(s)": songs[i].artists.map(getArtistNames),
+        "song name: ": songs[i].name,
+        "preview song: ": songs[i].preview_url,
+        "album: ": songs[i].album.name
+      });
+    }
+
+    console.log(data);
+    writeToLog(data);
+  });
 };
 
 // Function for running a Twitter Search
 var getMyTweets = function() {
   var client = new Twitter(keys.twitter);
 
-  var params = {
-    screen_name: "cnn"
-  };
+  var params = { screen_name: "cnn" };
   client.get("statuses/user_timeline", params, function(error, tweets, response) {
     if (!error) {
+      var data = [];
+
       for (var i = 0; i < tweets.length; i++) {
-        console.log(tweets[i].created_at);
-        console.log("");
-        console.log(tweets[i].text);
+        data.push({
+          created_at: tweets[i].created_at,
+          text: tweets[i].text
+        });
       }
+
+      console.log(data);
+      writeToLog(data);
     }
   });
 };
@@ -90,15 +105,20 @@ var getMeMovie = function(movieName) {
     if (!error && response.statusCode === 200) {
       var jsonData = JSON.parse(body);
 
-      console.log("Title: " + jsonData.Title);
-      console.log("Year: " + jsonData.Year);
-      console.log("Rated: " + jsonData.Rated);
-      console.log("IMDB Rating: " + jsonData.imdbRating);
-      console.log("Country: " + jsonData.Country);
-      console.log("Language: " + jsonData.Language);
-      console.log("Plot: " + jsonData.Plot);
-      console.log("Actors: " + jsonData.Actors);
-      console.log("Rotten Tomatoes Rating: " + jsonData.Ratings[1].Value);
+      var data = {
+        "Title:": jsonData.Title,
+        "Year:": jsonData.Year,
+        "Rated:": jsonData.Rated,
+        "IMDB Rating:": jsonData.imdbRating,
+        "Country:": jsonData.Country,
+        "Language:": jsonData.Language,
+        "Plot:": jsonData.Plot,
+        "Actors:": jsonData.Actors,
+        "Rotten Tomatoes Rating:": jsonData.Ratings[1].Value
+      };
+
+      console.log(data);
+      writeToLog(data);
     }
   });
 };
